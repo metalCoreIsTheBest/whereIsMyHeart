@@ -1,0 +1,4 @@
+CompileFlags:
+    Add:
+        - "-std=c++14" # Set C++ standard for C++ files
+        - "-lfmt" # enable libfmt
