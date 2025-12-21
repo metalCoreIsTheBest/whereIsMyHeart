@@ -1,7 +1,7 @@
 add_rules("mode.debug", "mode.release")
 
 target("whereIsMyHeart")
-    set_languages("c++14")
+    set_languages("c++17")
     set_warnings("all", "error")
     set_kind("binary")
     add_ldflags("-lfmt")
