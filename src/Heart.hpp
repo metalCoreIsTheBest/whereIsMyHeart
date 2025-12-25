@@ -2,8 +2,10 @@
 
 #include <fmt/core.h>
 #include <cmath>
+#include <cstdlib>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #define DC_HEART_AB(NAME) \
     void anime_block_##NAME (size_t frames)
@@ -58,23 +60,42 @@ namespace heart {
 
             enum class color {RED, PINK, VIOLET, BLACK};
 
+            // canvas is to class to represent each frame
+            class Canvas {
+                private:
+                    std::vector<Heart::color> canv;
+                    size_t width, height;
+                public:
+                    Canvas(size_t width, size_t height): width(width), height(height), canv(width * height) {};
+                    ~Canvas() = default;
+
+                    // print the pixels arround a point with a specific color
+                    void print_region(size_t x, size_t y, color c, size_t size);
+
+                    // load the image to a ppm file
+                    void toPPM(const std::string& output_file);
+            };
+
+            // ======================================================================================================
             size_t width, height;     // real size of the video
             std::string output_dir;   // output directory for ppm frames
 
             size_t frame_cnt;         // internal managed counter of frames
+            // ======================================================================================================
 
-            std::string c2s(color c) const {
+
+            static constexpr std::string_view c2s(color c) {
                 switch (c) {
                     case color::RED:
-                        return "255 0 0 ";
+                        return "255 0 0";
                     case color::PINK:
-                        return "255 192 203 ";
+                        return "255 192 203";
                     case color::VIOLET:
-                        return "238 130 238 ";
+                        return "238 130 238";
                     case color::BLACK:
-                        return "255 255 255 ";
+                        return "255 255 255";
                     default:
-                        return "255 255 255 "; // color black for error
+                        return "255 255 255"; // color black for error
                 }
             }
 
@@ -89,16 +110,18 @@ namespace heart {
             DC_HEART_AB(COLOR_CHANGE);
             DC_HEART_AB(ILOVEU);
 
-            // drawing utils
+            // inline drawing utility function
 
-            // F(x, y) = ((kx)^2 + (ky)^2 - 1)^3 - (kx)^2 * (ky)^3
+            // F(x, y) = ((kx -a)^2 + (ky - b)^2 - 1)^3 - (kx - a)^2 * (ky - b)^3
             // it is a heart if the output is 0
             // domain (approximate):
-            // -1.15/k < x < 1.15/k
-            //   -1/k  < y < 1.25/k
-            double heart_curve(double x, double y, double k) {
-                return std::pow(std::pow(k * x, 2) + std::pow(k * y, 2) + 1, 3) - std::pow(k * x, 2) * std::pow(k * y, 3);
+            // -1.15/k + a < x < 1.15/k + a
+            //  -1/k + b < y < 1.25/k + b
+            double heart_curve(double x, double y, double k, double a, double b) {
+                return std::pow(std::pow(k * (x - a), 2) + std::pow(k * (y - b), 2) + 1, 3)
+                       - std::pow(k * (x - a), 2) * std::pow(k * (y - b), 3);
             }
+
     };
 
 }
