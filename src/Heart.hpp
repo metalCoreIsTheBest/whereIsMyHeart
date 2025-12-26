@@ -51,20 +51,20 @@ namespace heart {
             void anime_block(animation ani, size_t frames);
 
             // turn all the frames into a video
-            void toVideo(int frame_rate, const std::string& format);
+            void toVideo(int frame_rate);
 
         private:
             static const int COLOR_MAX_VAL = 255;
             static const size_t ORG_WIDTH = 1280;
             static const size_t ORG_HEIGHT = 720;
 
-            enum class color {RED, PINK, VIOLET, BLACK};
+            enum class color {BLACK, RED, PINK, VIOLET};
 
             // canvas is to class to represent each frame
             class Canvas {
                 private:
-                    std::vector<Heart::color> canv;
                     size_t width, height;
+                    std::vector<Heart::color> canv;
                 public:
                     Canvas(size_t width, size_t height): width(width), height(height), canv(width * height) {};
                     ~Canvas() = default;
@@ -79,6 +79,8 @@ namespace heart {
             // ======================================================================================================
             size_t width, height;     // real size of the video
             std::string output_dir;   // output directory for ppm frames
+            double k;                 // used by the heart curve
+            size_t a, b;              // used by the heart curve
 
             size_t frame_cnt;         // internal managed counter of frames
             // ======================================================================================================
@@ -93,9 +95,9 @@ namespace heart {
                     case color::VIOLET:
                         return "238 130 238";
                     case color::BLACK:
-                        return "255 255 255";
+                        return "0 0 0";
                     default:
-                        return "255 255 255"; // color black for error
+                        return "255 255 255"; // color white for error
                 }
             }
 
@@ -112,13 +114,13 @@ namespace heart {
 
             // inline drawing utility function
 
-            // F(x, y) = ((kx -a)^2 + (ky - b)^2 - 1)^3 - (kx - a)^2 * (ky - b)^3
+            // F(x, y) = (k(x -a)^2 + k(y - b)^2 - 1)^3 - (k(x - a))^2 * (k(y - b)^3
             // it is a heart if the output is 0
             // domain (approximate):
-            // -1.15/k + a < x < 1.15/k + a
-            //  -1/k + b < y < 1.25/k + b
-            double heart_curve(double x, double y, double k, double a, double b) {
-                return std::pow(std::pow(k * (x - a), 2) + std::pow(k * (y - b), 2) + 1, 3)
+            // -1.15/|k| + a < x < 1.15/|k| + a
+            //  -1/|k| + b < y < 1.25/|k| + b
+            double heart_curve(double x, double y) {
+                return std::pow(std::pow(k * (x - a), 2) + std::pow(k * (y - b), 2) - 1, 3)
                        - std::pow(k * (x - a), 2) * std::pow(k * (y - b), 3);
             }
 

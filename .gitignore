@@ -49,4 +49,4 @@ build/
 *.dwo
 
 # test files
-test_*
+test*
