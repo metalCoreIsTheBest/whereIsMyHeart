@@ -48,7 +48,7 @@ namespace heart {
         this->output_dir = outout_dir;
         this->frame_cnt = 0;
 
-        fmt::print("Heart: a: {} | b: {} | k: {:.2f}\n", a, b, k);
+        fmt::print("Heart: a: {} | b: {} | k: {:.2e}\n", a, b, k);
     }
 
     Heart::Heart(double width_factor, double height_factor, const std::string& output_dir) {
@@ -60,7 +60,7 @@ namespace heart {
         this->output_dir = output_dir;
         this->frame_cnt = 0;
 
-        fmt::print("Heart: a: {} | b: {} | k: {:.2f}\n", a, b, k);
+        fmt::print("Heart: a: {} | b: {} | k: {:.2e}\n", a, b, k);
     }
 
     void Heart::anime_block(Heart::animation ani, size_t frames) {
@@ -111,16 +111,14 @@ namespace heart {
 
         fmt::print("Generating SHOW_UP2DOWN:");
         for (size_t f = 1; f <= frames; f++) {
-            ITER_WHOLE_PLANE(width, height) {{
-                if (curr_y < (static_cast<double>(height) / static_cast<double>(frames) * f)) {
-                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
-                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
-                    // it is not an accurate check, but good enough in this case
-                    {
-                        canvas.print_region(curr_x, curr_y, color::RED, 3);
-                    }
+            ITER_WHOLE_PLANE(width, static_cast<double>(height) / static_cast<double>(frames) * f) {
+                if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                    || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                // it is not an accurate check, but good enough in this case
+                {
+                    canvas.print_region(curr_x, curr_y, color::RED, 3);
                 }
-            }}
+            }
             canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
             if (f % 10 == 0) {
                 fmt::print("\rGenerating SHOW_UP2DOWN: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
@@ -136,8 +134,8 @@ namespace heart {
 
         fmt::print("Generating SHOW_DOWN2UP:");
         for (size_t f = 1; f <= frames; f++) {
-            ITER_WHOLE_PLANE(width, height) {{
-                if (curr_y > (-static_cast<double>(height) / static_cast<double>(frames) * f + height)) {
+            for (size_t curr_y = -1.0 * height / frames * f + height; curr_y < height; curr_y++) {
+                for (size_t curr_x = 0; curr_x < width; curr_x++) {
                     if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
                         || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
                     // it is not an accurate check, but good enough in this case
@@ -145,7 +143,7 @@ namespace heart {
                         canvas.print_region(curr_x, curr_y, color::RED, 3);
                     }
                 }
-            }}
+            }
             canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
             if (f % 10 == 0) {
                 fmt::print("\rGenerating SHOW_DOWN2UP: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
@@ -156,8 +154,67 @@ namespace heart {
         fmt::print("\n");
     }
 
-    DF_HEART_AB(DIS_UP2DOWN) {}
-    DF_HEART_AB(DIS_DOWN2UP) {}
+    DF_HEART_AB(DIS_UP2DOWN) {
+        Canvas canvas(width, height);
+
+        fmt::print("Generating DIS_UP2DOWN");
+        for (size_t f = 1; f <= frames; f++) {
+            if (f == 1) {
+                ITER_WHOLE_PLANE(width, height) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    {
+                            canvas.print_region(curr_x, curr_y, color::RED, 3);
+                    }
+                }
+            } else {
+                ITER_WHOLE_PLANE(width, height / frames * f) {
+                    if (canvas.get(curr_x, curr_y) == color::RED) {
+                        canvas.print_region(curr_x, curr_y, color::BLACK, 3);
+                    }
+                }
+            }
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            if (f % 10 == 0) {
+                fmt::print("\rGenerating DIS_UP2DOWN: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
+                std::fflush(stdout);
+            }
+            frame_cnt++;
+        }
+        fmt::print("\n");
+    }
+
+    DF_HEART_AB(DIS_DOWN2UP) {
+        Canvas canvas(width, height);
+
+        fmt::print("Generating DIS_DOWN2UP");
+        for (size_t f = 1; f <= frames; f++) {
+            if (f == 1) {
+                ITER_WHOLE_PLANE(width, height) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    {
+                        canvas.print_region(curr_x, curr_y, color::RED, 3);
+                    }
+                }
+            } else {
+                for (size_t curr_y = -1.0 * height / frames * f + height; curr_y < height; curr_y++) {
+                    for (size_t curr_x = 0; curr_x < width; curr_x++) {
+                        if (canvas.get(curr_x, curr_y) == color::RED) {
+                            canvas.print_region(curr_x, curr_y, color::BLACK, 3);
+                        }
+                    }
+                }
+            }
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            if (f % 10 == 0) {
+                fmt::print("\rGenerating DIS_DOWN2UP: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
+                std::fflush(stdout);
+            }
+            frame_cnt++;
+        }
+            fmt::print("\n");
+    }
 
     DF_HEART_AB(STILL) {
         Canvas canvas(width, height);
@@ -165,14 +222,14 @@ namespace heart {
         fmt::print("Generating STILL:");
         for (size_t f = 1; f <= frames; f++) {
             if (f == 1) {
-                ITER_WHOLE_PLANE(width, height) {{
+                ITER_WHOLE_PLANE(width, height) {
                     if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
                         || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
                     // it is not an accurate check, but good enough in this case
                     {
                         canvas.print_region(curr_x, curr_y, color::RED, 3);
                     }
-                }}
+                }
             }
             canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
             if (f % 10 == 0) {

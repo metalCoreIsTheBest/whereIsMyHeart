@@ -7,6 +7,8 @@
 #include <string_view>
 #include <vector>
 
+#include "utils.hpp"
+
 #define DC_HEART_AB(NAME) \
     void anime_block_##NAME (size_t frames)
 
@@ -74,6 +76,11 @@ namespace heart {
 
                     // load the image to a ppm file
                     void toPPM(const std::string& output_file);
+
+                    // getter
+                    color get(size_t x, size_t y) {
+                        return canv.at(heart::map_xy(x, y, width));
+                    }
             };
 
             // ======================================================================================================
