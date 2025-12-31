@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <string>
 #include <string_view>
@@ -36,6 +37,7 @@ namespace heart {
                 SLIDE,
 
                 // SPECIAL
+                EMPTY,
                 COLOR_CHANGE,
                 ILOVEU,
             };
@@ -108,6 +110,25 @@ namespace heart {
                 }
             }
 
+            static const std::vector<uint8_t>& c2v(color c) {
+                static std::vector<uint8_t> red {255, 0, 0};
+                static std::vector<uint8_t> pink {255, 192, 203};
+                static std::vector<uint8_t> violet {238, 130, 238};
+                static std::vector<uint8_t> black {0, 0, 0};
+                switch (c) {
+                    case color::RED:
+                        return red;
+                    case color::PINK:
+                        return pink;
+                    case color::VIOLET:
+                        return violet;
+                    case color::BLACK:
+                        return black;
+                    default:
+                        return black;
+                }
+            }
+
             // impl of anime_blocks
             DC_HEART_AB(SHOW_UP2DOWN);
             DC_HEART_AB(SHOW_DOWN2UP);
@@ -116,6 +137,7 @@ namespace heart {
             DC_HEART_AB(STILL);
             DC_HEART_AB(SHAKE);
             DC_HEART_AB(SLIDE);
+            DC_HEART_AB(EMPTY);
             DC_HEART_AB(COLOR_CHANGE);
             DC_HEART_AB(ILOVEU);
 
@@ -156,6 +178,8 @@ struct fmt::formatter<heart::Heart::animation>: public fmt::formatter<std::strin
                 name = "SHAKE"; break;
             case ani_t::SLIDE:
                 name = "SLIDE"; break;
+            case ani_t::EMPTY:
+                name = "EMPTY"; break;
             case ani_t::COLOR_CHANGE:
                 name = "COLOR_CHANGE"; break;
             case ani_t::ILOVEU:

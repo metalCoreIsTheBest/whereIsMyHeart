@@ -1,9 +1,12 @@
 #include <fmt/os.h>
 #include <fmt/core.h>
+
+#include <fstream>
 #include <cstdlib>
 #include <cstdio>
 #include <string.h>
 #include <algorithm>
+#include <string>
 
 #include "Heart.hpp"
 #include "utils.hpp"
@@ -32,11 +35,23 @@ namespace heart {
     }
 
     void Heart::Canvas::toPPM(const std::string& output_file) {
+        /*
         auto fout = fmt::output_file(output_file);
         fout.print("P3\n{} {}\n{}\n", width, height, COLOR_MAX_VAL);
         for (auto pixel: canv) {
             fout.print("{} ", Heart::c2s(pixel));
         }
+        */
+        std::ofstream fout;
+        fout.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+        fout.open(output_file, std::ios::out | std::ios::binary);
+        fout << "P6\n" << width << " " << height << "\n" << COLOR_MAX_VAL << "\n";
+
+        for (auto pixel: canv) {
+            fout.write(reinterpret_cast<const char *>(Heart::c2v(pixel).data()), Heart::c2v(pixel).size());
+        }
+
+        fout.close();
     }
 
     Heart::Heart(const std::string& outout_dir) {
@@ -93,6 +108,9 @@ namespace heart {
                 break;
 
             // SPECIAL
+            case animation::EMPTY:
+                CALL_HEART_AB(EMPTY, frames);
+                break;
             case animation::COLOR_CHANGE:
                 CALL_HEART_AB(COLOR_CHANGE, frames);
                 break;
@@ -242,7 +260,24 @@ namespace heart {
     }
 
     DF_HEART_AB(SHAKE) {}
+
     DF_HEART_AB(SLIDE) {}
+
+    DF_HEART_AB(EMPTY) {
+        Canvas canvas(width, height);
+
+        fmt::print("Generating EMPTY:");
+        for (size_t f = 1; f <= frames; f++) {
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            if (f % 10 == 0) {
+                fmt::print("\rGenerating EMPTY: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
+                std::fflush(stdout);
+            }
+            frame_cnt++;
+        }
+        fmt::print("\n");
+    }
+
     DF_HEART_AB(COLOR_CHANGE) {}
     DF_HEART_AB(ILOVEU) {}
 
