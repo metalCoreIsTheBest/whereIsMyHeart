@@ -1,5 +1,7 @@
 # whereIsMyHeart
 
+A simple toy-level heart animation generator
+
 ---
 
 > *To Miss Nie* 😘
