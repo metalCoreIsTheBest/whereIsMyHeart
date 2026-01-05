@@ -69,8 +69,8 @@ int main(int argc, char *argv[]) {
             h.anime_block(ani_t::DIS_DOWN2UP, frames_buf);
         } else if (ani_buf == "STILL") {
             h.anime_block(ani_t::STILL, frames_buf);
-        } else if (ani_buf == "SHAKE") {
-            h.anime_block(ani_t::SHAKE, frames_buf);
+        } else if (ani_buf == "BEAT") {
+            h.anime_block(ani_t::BEAT, frames_buf);
         } else if (ani_buf == "SLIDE") {
             h.anime_block(ani_t::SLIDE, frames_buf);
         } else if (ani_buf == "SLIDE") {
@@ -79,8 +79,6 @@ int main(int argc, char *argv[]) {
             h.anime_block(ani_t::EMPTY, frames_buf);
         } else if (ani_buf == "COLOR_CHANGE") {
             h.anime_block(ani_t::COLOR_CHANGE, frames_buf);
-        } else if (ani_buf == "ILOVEU") {
-            h.anime_block(ani_t::ILOVEU, frames_buf);
         } else {
             fmt::print(stderr, "Wrong animation name {}\n", ani_buf);
             exit(1);

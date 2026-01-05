@@ -33,13 +33,12 @@ namespace heart {
 
                 // moves
                 STILL,
-                SHAKE,
+                BEAT,
                 SLIDE,
 
                 // SPECIAL
                 EMPTY,
                 COLOR_CHANGE,
-                ILOVEU,
             };
 
             Heart(const std::string& output_dir);
@@ -89,7 +88,7 @@ namespace heart {
             size_t width, height;     // real size of the video
             std::string output_dir;   // output directory for ppm frames
             double k;                 // used by the heart curve
-            size_t a, b;              // used by the heart curve
+            long a, b;              // used by the heart curve
 
             size_t frame_cnt;         // internal managed counter of frames
             // ======================================================================================================
@@ -135,15 +134,14 @@ namespace heart {
             DC_HEART_AB(DIS_UP2DOWN);
             DC_HEART_AB(DIS_DOWN2UP);
             DC_HEART_AB(STILL);
-            DC_HEART_AB(SHAKE);
+            DC_HEART_AB(BEAT);
             DC_HEART_AB(SLIDE);
             DC_HEART_AB(EMPTY);
             DC_HEART_AB(COLOR_CHANGE);
-            DC_HEART_AB(ILOVEU);
 
             // inline drawing utility function
 
-            // F(x, y) = (k(x -a)^2 + k(y - b)^2 - 1)^3 - (k(x - a))^2 * (k(y - b)^3
+            // F(x, y) = (k(x - a)^2 + k(y - b)^2 - 1)^3 - (k(x - a))^2 * (k(y - b)^3
             // it is a heart if the output is 0
             // domain (approximate):
             // -1.15/|k| + a < x < 1.15/|k| + a
@@ -174,16 +172,14 @@ struct fmt::formatter<heart::Heart::animation>: public fmt::formatter<std::strin
                 name = "DIS_DOWN2UP"; break;
             case ani_t::STILL:
                 name = "STILL"; break;
-            case ani_t::SHAKE:
-                name = "SHAKE"; break;
+            case ani_t::BEAT:
+                name = "BEAT"; break;
             case ani_t::SLIDE:
                 name = "SLIDE"; break;
             case ani_t::EMPTY:
                 name = "EMPTY"; break;
             case ani_t::COLOR_CHANGE:
                 name = "COLOR_CHANGE"; break;
-            case ani_t::ILOVEU:
-                name = "ILOVEU"; break;
         }
         return fmt::formatter<std::string_view>::format(name, ctx);
     }

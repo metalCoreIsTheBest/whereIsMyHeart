@@ -100,8 +100,8 @@ namespace heart {
             case animation::STILL:
                 CALL_HEART_AB(STILL, frames);
                 break;
-            case animation::SHAKE:
-                CALL_HEART_AB(SHAKE, frames);
+            case animation::BEAT:
+                CALL_HEART_AB(BEAT, frames);
                 break;
             case animation::SLIDE:
                 CALL_HEART_AB(SLIDE, frames);
@@ -114,9 +114,6 @@ namespace heart {
             case animation::COLOR_CHANGE:
                 CALL_HEART_AB(COLOR_CHANGE, frames);
                 break;
-            case animation::ILOVEU:
-                CALL_HEART_AB(ILOVEU, frames);
-                break;
 
             default:
                 fmt::print(stderr, "Unexpected input for Heart::anime_block(): {}", ani);
@@ -128,6 +125,7 @@ namespace heart {
         Canvas canvas(width, height);
 
         fmt::print("Generating SHOW_UP2DOWN:");
+        std::fflush(stdout);
         for (size_t f = 1; f <= frames; f++) {
             ITER_WHOLE_PLANE(width, static_cast<double>(height) / static_cast<double>(frames) * f) {
                 if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
@@ -151,6 +149,7 @@ namespace heart {
         Canvas canvas(width, height);
 
         fmt::print("Generating SHOW_DOWN2UP:");
+        std::fflush(stdout);
         for (size_t f = 1; f <= frames; f++) {
             for (size_t curr_y = -1.0 * height / frames * f + height; curr_y < height; curr_y++) {
                 for (size_t curr_x = 0; curr_x < width; curr_x++) {
@@ -175,7 +174,8 @@ namespace heart {
     DF_HEART_AB(DIS_UP2DOWN) {
         Canvas canvas(width, height);
 
-        fmt::print("Generating DIS_UP2DOWN");
+        fmt::print("Generating DIS_UP2DOWN:");
+        std::fflush(stdout);
         for (size_t f = 1; f <= frames; f++) {
             if (f == 1) {
                 ITER_WHOLE_PLANE(width, height) {
@@ -205,7 +205,8 @@ namespace heart {
     DF_HEART_AB(DIS_DOWN2UP) {
         Canvas canvas(width, height);
 
-        fmt::print("Generating DIS_DOWN2UP");
+        fmt::print("Generating DIS_DOWN2UP:");
+        std::fflush(stdout);
         for (size_t f = 1; f <= frames; f++) {
             if (f == 1) {
                 ITER_WHOLE_PLANE(width, height) {
@@ -238,6 +239,7 @@ namespace heart {
         Canvas canvas(width, height);
 
         fmt::print("Generating STILL:");
+        std::fflush(stdout);
         for (size_t f = 1; f <= frames; f++) {
             if (f == 1) {
                 ITER_WHOLE_PLANE(width, height) {
@@ -259,14 +261,85 @@ namespace heart {
         fmt::print("\n");
     }
 
-    DF_HEART_AB(SHAKE) {}
+    DF_HEART_AB(BEAT) {
+        fmt::print("Generating BEAT:");
+        std::fflush(stdout);
+        auto org_k = k;
+        for (size_t f = 1; f <= frames; f++) {
+            Canvas canvas(width, height);
+            if (f <= frames / 2) {
+                k = org_k - 0.4 * org_k / frames * f; // adapt k
+                ITER_WHOLE_PLANE(width, height) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    {
+                        canvas.print_region(curr_x, curr_y, color::RED, 3);
+                    }
+                }
+            } else {
+                k = 0.6 * org_k + 0.4 * org_k / frames * f;
+                ITER_WHOLE_PLANE(width, height) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    {
+                        canvas.print_region(curr_x, curr_y, color::RED, 3);
+                    }
+                }
+            }
 
-    DF_HEART_AB(SLIDE) {}
+            canvas.toPPM(fmt::format("{0}/frame{1}.ppm", output_dir, std::to_string(frame_cnt)));
+            if (f % 10 == 0 || f == frames) {
+                fmt::print("\rGenerating BEAT: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
+                std::fflush(stdout);
+            }
+            frame_cnt++;
+        }
+        k = org_k;
+        fmt::print("\n");
+    }
+
+    DF_HEART_AB(SLIDE) {
+        fmt::print("Generating SLIDE:");
+        std::fflush(stdout);
+        auto org_a = a;
+        for (size_t f = 1; f <= frames; f++) {
+            Canvas canvas(width, height);
+            if (f <= frames / 2) {
+                a = org_a - 4 * org_a / frames * f;
+                ITER_WHOLE_PLANE(width, height) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    {
+                        canvas.print_region(curr_x, curr_y, color::RED, 3);
+                    }
+                }
+            } else {
+                a = 5 * org_a - 4 * org_a / frames * f;
+                ITER_WHOLE_PLANE(width, height) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    {
+                        canvas.print_region(curr_x, curr_y, color::RED, 3);
+                    }
+                }
+            }
+
+            canvas.toPPM(fmt::format("{0}/frame{1}.ppm", output_dir, std::to_string(frame_cnt)));
+            if (f % 10 == 0 || f == frames) {
+                fmt::print("\rGenerating SLIDE: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
+                std::fflush(stdout);
+            }
+            frame_cnt++;
+        }
+        a = org_a;
+        fmt::print("\n");
+    }
 
     DF_HEART_AB(EMPTY) {
         Canvas canvas(width, height);
 
         fmt::print("Generating EMPTY:");
+        std::fflush(stdout);
         for (size_t f = 1; f <= frames; f++) {
             canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
             if (f % 10 == 0 || f == frames) {
@@ -278,8 +351,41 @@ namespace heart {
         fmt::print("\n");
     }
 
-    DF_HEART_AB(COLOR_CHANGE) {}
-    DF_HEART_AB(ILOVEU) {}
+    DF_HEART_AB(COLOR_CHANGE) {
+        Canvas canvas(width, height);
+
+        fmt::print("Generating COLOR_CHANGE:");
+        std::fflush(stdout);
+        for (size_t f = 1; f <= frames; f++) {
+            if (f == 1) {
+                ITER_WHOLE_PLANE(width, height) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    // it is not an accurate check, but good enough in this case
+                    {
+                        canvas.print_region(curr_x, curr_y, color::PINK, 3);
+                    }
+                }
+            } else if (f == frames / 2) {
+                ITER_WHOLE_PLANE(width, height) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    // it is not an accurate check, but good enough in this case
+                    {
+                        canvas.print_region(curr_x, curr_y, color::VIOLET, 3);
+                    }
+                }
+            }
+
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            if (f % 10 == 0 || f == frames) {
+                fmt::print("\rGenerating COLOR_CHANGE: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
+                std::fflush(stdout);
+            }
+            frame_cnt++;
+        }
+        fmt::print("\n");
+    }
 
     void Heart::toVideo(int frame_rate) {
         std::string inputPattern = output_dir + "/frame%d.ppm";
