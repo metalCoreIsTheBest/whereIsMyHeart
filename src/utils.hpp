@@ -17,4 +17,5 @@ namespace heart {
     static inline size_t map_xy(size_t x, size_t y, size_t xsize) {
         return x + y * xsize;
     }
+
 }

@@ -138,7 +138,7 @@ namespace heart {
                 }
             }
             canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
-            if (f % 10 == 0) {
+            if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating SHOW_UP2DOWN: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
             }
@@ -163,7 +163,7 @@ namespace heart {
                 }
             }
             canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
-            if (f % 10 == 0) {
+            if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating SHOW_DOWN2UP: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
             }
@@ -193,7 +193,7 @@ namespace heart {
                 }
             }
             canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
-            if (f % 10 == 0) {
+            if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating DIS_UP2DOWN: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
             }
@@ -225,7 +225,7 @@ namespace heart {
                 }
             }
             canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
-            if (f % 10 == 0) {
+            if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating DIS_DOWN2UP: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
             }
@@ -250,7 +250,7 @@ namespace heart {
                 }
             }
             canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
-            if (f % 10 == 0) {
+            if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating STILL: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
             }
@@ -269,7 +269,7 @@ namespace heart {
         fmt::print("Generating EMPTY:");
         for (size_t f = 1; f <= frames; f++) {
             canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
-            if (f % 10 == 0) {
+            if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating EMPTY: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
             }
@@ -287,12 +287,8 @@ namespace heart {
         std::string codec = "libx264";
         std::string pixelFormat = "yuv420p";
 
-        std::string cmd = "ffmpeg -framerate " + std::to_string(frame_rate)
-                            + " -i " + inputPattern
-                            + " -c:v " + codec
-                            + " -v 0 "
-                            + " -pix_fmt " + pixelFormat
-                            + " " + outputFile;
+        std::string cmd = fmt::format("ffmpeg -framerate {0} -i {1} -c:v {2} -v 0 -pix_fmt {3} {4}",
+            std::to_string(frame_rate), inputPattern, codec, pixelFormat, outputFile);
 
         fmt::print("Execut ffmpeg command: {}\n", cmd);
 
