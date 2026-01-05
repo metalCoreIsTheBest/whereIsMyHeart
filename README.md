@@ -18,6 +18,7 @@ A simple toy-level heart animation generator
 1. `xmake f -m release`
 1. run `xmake` to compile the program
 1. write a config file (see `animation.txt` for example)
-1. create a directory for the output (for example, `mkdir output`)
+1. create a directory for the output files (for example, `mkdir output`)
 1. run the program (for example, `xmake run whereIsMyHeart $(realpath ./animation.txt) $(realpath ./output/)`)
 1. check the `output.mp4` in your output directory
+1. (you may then clean the ppm files in your output directory)
