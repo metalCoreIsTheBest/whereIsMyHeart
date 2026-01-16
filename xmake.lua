@@ -5,6 +5,7 @@ target("whereIsMyHeart")
     set_warnings("all", "error")
     set_kind("binary")
     add_ldflags("-lfmt")
+    add_packages("fmt")
     add_files("src/*.cpp")
     set_optimize("fastest")
 
