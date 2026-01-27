@@ -4,14 +4,20 @@
 #include <fstream>
 #include <cstdlib>
 #include <cstdio>
+#include <future>
+#include <mutex>
 #include <string.h>
 #include <algorithm>
 #include <string>
+#include <thread>
 
 #include "Heart.hpp"
 #include "utils.hpp"
+#include "SimpleThreadPool.hpp"
 
 namespace heart {
+    using namespace std::chrono_literals;
+
     void Heart::Canvas::print_region(size_t x, size_t y, color c, size_t size) {
         if (x >= width || y >= height) {
             return; // Center point is out of bounds, nothing to draw
@@ -63,7 +69,7 @@ namespace heart {
         this->output_dir = outout_dir;
         this->frame_cnt = 0;
 
-        fmt::print("Heart: a: {} | b: {} | k: {:.2e}\n", a, b, k);
+        fmt::print("💖 Heart: a: {} | b: {} | k: {:.2e}\n", a, b, k);
     }
 
     Heart::Heart(double width_factor, double height_factor, const std::string& output_dir) {
@@ -75,7 +81,7 @@ namespace heart {
         this->output_dir = output_dir;
         this->frame_cnt = 0;
 
-        fmt::print("Heart: a: {} | b: {} | k: {:.2e}\n", a, b, k);
+        fmt::print("💖 Heart: a: {} | b: {} | k: {:.2e}\n", a, b, k);
     }
 
     void Heart::anime_block(Heart::animation ani, size_t frames) {
@@ -113,6 +119,48 @@ namespace heart {
                 break;
             case animation::COLOR_CHANGE:
                 CALL_HEART_AB(COLOR_CHANGE, frames);
+                break;
+
+            default:
+                fmt::print(stderr, "Unexpected input for Heart::anime_block(): {}", ani);
+        }
+    }
+
+    void Heart::anime_block_para(Heart::animation ani, size_t frames, SimpleThreadPool& stp) {
+        switch (ani) {
+            // show up
+            case animation::SHOW_UP2DOWN:
+                CALL_HEART_AB_PARA(SHOW_UP2DOWN, frames, stp);
+                break;
+            case animation::SHOW_DOWN2UP:
+                CALL_HEART_AB_PARA(SHOW_DOWN2UP, frames, stp);
+                break;
+
+            // disappear
+            case animation::DIS_UP2DOWN:
+                CALL_HEART_AB_PARA(DIS_UP2DOWN, frames, stp);
+                break;
+            case animation::DIS_DOWN2UP:
+                CALL_HEART_AB_PARA(DIS_DOWN2UP, frames, stp);
+                break;
+
+            // moves
+            case animation::STILL:
+                CALL_HEART_AB_PARA(STILL, frames, stp);
+                break;
+            case animation::BEAT:
+                CALL_HEART_AB_PARA(BEAT, frames, stp);
+                break;
+            case animation::SLIDE:
+                CALL_HEART_AB_PARA(SLIDE, frames, stp);
+                break;
+
+            // SPECIAL
+            case animation::EMPTY:
+                CALL_HEART_AB_PARA(EMPTY, frames, stp);
+                break;
+            case animation::COLOR_CHANGE:
+                CALL_HEART_AB_PARA(COLOR_CHANGE, frames, stp);
                 break;
 
             default:
@@ -404,4 +452,603 @@ namespace heart {
            fmt::print(stderr, "Failed to generate the video!");
         }
     };
+
+    DF_HEART_AB_PARA(SHOW_UP2DOWN) {
+
+        // define thread tasks
+        auto task = [this, frames](size_t f) {
+            Canvas canvas(width, height);
+            ITER_WHOLE_PLANE(width, static_cast<double>(height) / static_cast<double>(frames) * f) {
+                if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                    || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                // it is not an accurate check, but good enough in this case
+                {
+                    canvas.print_region(curr_x, curr_y, color::RED, 3);
+                }
+            }
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+        };
+
+        std::mutex mutex;
+        bool is_loading = true;
+        auto loading = [&](void) {
+            bool status;
+            int cnt = 0;
+            while (true) {
+                {
+                    std::lock_guard lock_guard(mutex);
+
+                    status = is_loading;
+                }
+
+                if (!status) {
+                    fmt::print("\rLoading SHOW_UP2DOWN of [{0}] frames: finished\n", frames);
+                    break;
+                }
+
+                cnt = (cnt + 1) % 4;
+                switch (cnt) {
+                    case 0:
+                        fmt::print("\rLoading SHOW_UP2DOWN of [{0}] frames: -", frames);
+                        fflush(stdout);
+                        break;
+                    case 1:
+                        fmt::print("\rLoading SHOW_UP2DOWN of [{0}] frames: \\", frames);
+                        fflush(stdout);
+                        break;
+                    case 2:
+                        fmt::print("\rLoading SHOW_UP2DOWN of [{0}] frames: |", frames);
+                        fflush(stdout);
+                        break;
+                    case 3:
+                        fmt::print("\rLoading SHOW_UP2DOWN of [{0}] frames: /", frames);
+                        fflush(stdout);
+                        break;
+                    default:
+                        break;
+                }
+
+                std::this_thread::sleep_for(0.2s);
+            }
+        };
+
+        // loading start
+        std::thread t_loading(loading);
+
+        std::vector<std::future<void>> results;
+        for (size_t f = 0; f < frames; ++f) {
+            results.emplace_back(stp.enqueue(task, f));
+        }
+        std::for_each(results.begin(), results.end(), [](std::future<void>& f) { f.get(); });
+
+        // finished
+        {
+            std::lock_guard lock_guard(mutex);
+
+            is_loading = false;
+        }
+        t_loading.join();
+
+        // update the global frame count
+        frame_cnt += frames;
+    }
+
+    DF_HEART_AB_PARA(SHOW_DOWN2UP) {
+        // define thread tasks
+        auto task = [this, frames](size_t f) {
+            Canvas canvas(width, height);
+            for (size_t curr_y = -1.0 * height / frames * f + height; curr_y < height; curr_y++) {
+                for (size_t curr_x = 0; curr_x < width; curr_x++) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    // it is not an accurate check, but good enough in this case
+                    {
+                        canvas.print_region(curr_x, curr_y, color::RED, 3);
+                    }
+                }
+            }
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+        };
+
+        std::mutex mutex;
+        bool is_loading = true;
+        auto loading = [&](void) {
+            bool status;
+            int cnt = 0;
+            while (true) {
+                {
+                    std::lock_guard lock_guard(mutex);
+
+                    status = is_loading;
+                }
+
+                if (!status) {
+                    fmt::print("\rLoading SHOW_DOWN2UP of [{0}] frames: finished\n", frames);
+                    break;
+                }
+
+                cnt = (cnt + 1) % 4;
+                switch (cnt) {
+                    case 0:
+                        fmt::print("\rLoading SHOW_DOWN2UP of [{0}] frames: -", frames);
+                        fflush(stdout);
+                        break;
+                    case 1:
+                        fmt::print("\rLoading SHOW_DOWN2UP of [{0}] frames: \\", frames);
+                        fflush(stdout);
+                        break;
+                    case 2:
+                        fmt::print("\rLoading SHOW_DOWN2UP of [{0}] frames: |", frames);
+                        fflush(stdout);
+                        break;
+                    case 3:
+                        fmt::print("\rLoading SHOW_DOWN2UP of [{0}] frames: /", frames);
+                        fflush(stdout);
+                        break;
+                    default:
+                        break;
+                }
+
+                std::this_thread::sleep_for(0.2s);
+            }
+        };
+
+        // loading start
+        std::thread t_loading(loading);
+
+        std::vector<std::future<void>> results;
+        for (size_t f = 0; f < frames; ++f) {
+            results.emplace_back(stp.enqueue(task, f));
+        }
+        std::for_each(results.begin(), results.end(), [](std::future<void>& f) { f.get(); });
+
+        // loading finish
+        {
+            std::lock_guard lock_guard(mutex);
+
+            is_loading = false;
+        }
+        t_loading.join();
+
+        // update the global frame count
+        frame_cnt += frames;
+    }
+
+    DF_HEART_AB_PARA(DIS_UP2DOWN) {
+
+        // define thread tasks
+        auto task = [this, frames](size_t f) {
+            Canvas canvas(width, height);
+            for (size_t curr_y = height / frames * f; curr_y < height; curr_y++) {
+                for (size_t curr_x = 0; curr_x < width; curr_x++) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    // it is not an accurate check, but good enough in this case
+                    {
+                        canvas.print_region(curr_x, curr_y, color::RED, 3);
+                    }
+                }
+            }
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+        };
+
+        std::mutex mutex;
+        bool is_loading = true;
+        auto loading = [&](void) {
+            bool status;
+            int cnt = 0;
+            while (true) {
+                {
+                    std::lock_guard lock_guard(mutex);
+
+                    status = is_loading;
+                }
+
+                if (!status) {
+                    fmt::print("\rLoading DIS_UP2DOWN of [{0}] frames: finished\n", frames);
+                    break;
+                }
+
+                cnt = (cnt + 1) % 4;
+                switch (cnt) {
+                    case 0:
+                        fmt::print("\rLoading DIS_UP2DOWN of [{0}] frames: -", frames);
+                        fflush(stdout);
+                        break;
+                    case 1:
+                        fmt::print("\rLoading DIS_UP2DOWN of [{0}] frames: \\", frames);
+                        fflush(stdout);
+                        break;
+                    case 2:
+                        fmt::print("\rLoading DIS_UP2DOWN of [{0}] frames: |", frames);
+                        fflush(stdout);
+                        break;
+                    case 3:
+                        fmt::print("\rLoading DIS_UP2DOWN of [{0}] frames: /", frames);
+                        fflush(stdout);
+                        break;
+                    default:
+                        break;
+                }
+
+                std::this_thread::sleep_for(0.2s);
+            }
+        };
+
+        // loading
+        std::thread t_loading(loading);
+
+        std::vector<std::future<void>> results;
+        for (size_t f = 0; f < frames; ++f) {
+            results.emplace_back(stp.enqueue(task, f));
+        }
+        std::for_each(results.begin(), results.end(), [](std::future<void>& f) { f.get(); });
+
+        // loading finish
+        {
+            std::lock_guard lock_guard(mutex);
+
+            is_loading = false;
+        }
+        t_loading.join();
+
+        frame_cnt += frames;
+    }
+
+    DF_HEART_AB_PARA(DIS_DOWN2UP) {
+
+        // define the task
+        auto task = [this, frames](size_t f) {
+            Canvas canvas(width, height);
+            for (size_t curr_y = 0; curr_y < height / frames * f; curr_y++) {
+                for (size_t curr_x = 0; curr_x < width; curr_x++) {
+                    if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                        || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                    // it is not an accurate check, but good enough in this case
+                    {
+                        canvas.print_region(curr_x, curr_y, color::RED, 3);
+                    }
+                }
+            }
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+        };
+
+        std::mutex mutex;
+        bool is_loading = true;
+        auto loading = [&](void) {
+            bool status;
+            int cnt = 0;
+            while (true) {
+                {
+                    std::lock_guard lock_guard(mutex);
+
+                    status = is_loading;
+                }
+
+                if (!status) {
+                    fmt::print("\rLoading DIS_DOWN2UP of [{0}] frames: finished\n", frames);
+                    break;
+                }
+
+                cnt = (cnt + 1) % 4;
+                switch (cnt) {
+                    case 0:
+                        fmt::print("\rLoading DIS_DOWN2UP of [{0}] frames: -", frames);
+                        fflush(stdout);
+                        break;
+                    case 1:
+                        fmt::print("\rLoading DIS_DOWN2UP of [{0}] frames: \\", frames);
+                        fflush(stdout);
+                        break;
+                    case 2:
+                        fmt::print("\rLoading DIS_DOWN2UP of [{0}] frames: |", frames);
+                        fflush(stdout);
+                        break;
+                    case 3:
+                        fmt::print("\rLoading DIS_DOWN2UP of [{0}] frames: /", frames);
+                        fflush(stdout);
+                        break;
+                    default:
+                        break;
+                }
+
+                std::this_thread::sleep_for(0.2s);
+            }
+        };
+
+        // loading start
+        std::thread t_loading(loading);
+
+        std::vector<std::future<void>> results;
+        for (size_t f = 0; f < frames; ++f) {
+            results.emplace_back(stp.enqueue(task, f));
+        }
+        std::for_each(results.begin(), results.end(), [](std::future<void>& f) { f.get(); });
+
+        // loading finish
+        {
+            std::lock_guard lock_guard(mutex);
+
+            is_loading = false;
+        }
+        t_loading.join();
+
+        frame_cnt += frames;
+    }
+
+    DF_HEART_AB_PARA(STILL) {
+        // no need to parallel this
+        CALL_HEART_AB(STILL, frames);
+    }
+
+    DF_HEART_AB_PARA(BEAT) {
+
+        // define task
+        auto task = [frames, org_k=this->k, a=this->a, b=this->b, width=this->width, height=this->height, output_dir=this->output_dir, frame_cnt=this->frame_cnt](size_t f) {
+            auto heart_curve_k = [&](double x, double y, double k) {
+                return std::pow(std::pow(k * (x - a), 2) + std::pow(k * (y - b), 2) - 1, 3)
+                       - std::pow(k * (x - a), 2) * std::pow(k * (y - b), 3);
+            };
+
+            Canvas canvas(width, height);
+            double k{};
+            if (f <= frames / 2) {
+                k = org_k - 0.4 * org_k / frames * f;
+            } else {
+                k = 0.6 * org_k + 0.4 * org_k / frames * f;
+            }
+
+            ITER_WHOLE_PLANE(width, height) {
+                if (heart_curve_k(curr_x + 0.5, curr_y, k) * heart_curve_k(curr_x + 0.5, curr_y + 1, k) < 0.0
+                    || heart_curve_k(curr_x, curr_y + 0.5, k) * heart_curve_k(curr_x + 1, curr_y + 0.5, k) < 0.0)
+                {
+                    canvas.print_region(curr_x, curr_y, color::RED, 3);
+                }
+            }
+
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+        };
+
+        std::mutex mutex;
+        bool is_loading = true;
+        auto loading = [&](void) {
+            bool status;
+            int cnt = 0;
+            while (true) {
+                {
+                    std::lock_guard lock_guard(mutex);
+
+                    status = is_loading;
+                }
+
+                if (!status) {
+                    fmt::print("\rLoading BEAT of [{0}] frames: finished\n", frames);
+                    break;
+                }
+
+                cnt = (cnt + 1) % 4;
+                switch (cnt) {
+                    case 0:
+                        fmt::print("\rLoading BEAT of [{0}] frames: -", frames);
+                        fflush(stdout);
+                        break;
+                    case 1:
+                        fmt::print("\rLoading BEAT of [{0}] frames: \\", frames);
+                        fflush(stdout);
+                        break;
+                    case 2:
+                        fmt::print("\rLoading BEAT of [{0}] frames: |", frames);
+                        fflush(stdout);
+                        break;
+                    case 3:
+                        fmt::print("\rLoading BEAT of [{0}] frames: /", frames);
+                        fflush(stdout);
+                        break;
+                    default:
+                        break;
+                }
+
+                std::this_thread::sleep_for(0.2s);
+            }
+        };
+
+        // loading start
+        std::thread t_loading(loading);
+
+        std::vector<std::future<void>> results;
+        for (size_t f = 0; f < frames; ++f) {
+            results.emplace_back(stp.enqueue(task, f));
+        }
+        std::for_each(results.begin(), results.end(), [](std::future<void>& f) { f.get(); });
+
+        // loading finish
+        {
+            std::lock_guard lock_guard(mutex);
+
+            is_loading = false;
+        }
+        t_loading.join();
+
+        frame_cnt += frames;
+    }
+
+    DF_HEART_AB_PARA(SLIDE) {
+        // define task
+        auto task = [frames, k=this->k, org_a=this->a, b=this->b, width=this->width, height=this->height, output_dir=this->output_dir, frame_cnt=this->frame_cnt] (size_t f) {
+            Canvas canvas(width, height);
+
+            auto a = (f <= frames / 2) ? org_a - 4 * org_a / frames * f : 5 * org_a - 4 * org_a / frames * f;
+
+            auto heart_curve_k = [&](double x, double y, double k) {
+                return std::pow(std::pow(k * (x - a), 2) + std::pow(k * (y - b), 2) - 1, 3)
+                       - std::pow(k * (x - a), 2) * std::pow(k * (y - b), 3);
+            };
+
+            ITER_WHOLE_PLANE(width, height) {
+                if (heart_curve_k(curr_x + 0.5, curr_y, k) * heart_curve_k(curr_x + 0.5, curr_y + 1, k) < 0.0
+                    || heart_curve_k(curr_x, curr_y + 0.5, k) * heart_curve_k(curr_x + 1, curr_y + 0.5, k) < 0.0)
+                {
+                    canvas.print_region(curr_x, curr_y, color::RED, 3);
+                }
+            }
+
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+        };
+
+        std::mutex mutex;
+        bool is_loading = true;
+        auto loading = [&](void) {
+            bool status;
+            int cnt = 0;
+            while (true) {
+                {
+                    std::lock_guard lock_guard(mutex);
+
+                    status = is_loading;
+                }
+
+                if (!status) {
+                    fmt::print("\rLoading SLIDE of [{0}] frames: finished\n", frames);
+                    break;
+                }
+
+                cnt = (cnt + 1) % 4;
+                switch (cnt) {
+                    case 0:
+                        fmt::print("\rLoading SLIDE of [{0}] frames: -", frames);
+                        fflush(stdout);
+                        break;
+                    case 1:
+                        fmt::print("\rLoading SLIDE of [{0}] frames: \\", frames);
+                        fflush(stdout);
+                        break;
+                    case 2:
+                        fmt::print("\rLoading SLIDE of [{0}] frames: |", frames);
+                        fflush(stdout);
+                        break;
+                    case 3:
+                        fmt::print("\rLoading SLIDE of [{0}] frames: /", frames);
+                        fflush(stdout);
+                        break;
+                    default:
+                        break;
+                }
+
+                std::this_thread::sleep_for(0.2s);
+            }
+        };
+
+        // loading start
+        std::thread t_loading(loading);
+
+        std::vector<std::future<void>> results;
+        for (size_t f = 0; f < frames; ++f) {
+            results.emplace_back(stp.enqueue(task, f));
+        }
+        std::for_each(results.begin(), results.end(), [](std::future<void>& f) { f.get(); });
+
+        // loading finish
+        {
+            std::lock_guard lock_guard(mutex);
+
+            is_loading = false;
+        }
+        t_loading.join();
+
+        frame_cnt += frames;
+    }
+
+    DF_HEART_AB_PARA(EMPTY) {
+        // no need to parallelize this
+        CALL_HEART_AB(EMPTY, frames);
+    }
+
+    DF_HEART_AB_PARA(COLOR_CHANGE) {
+        // define task
+        auto task = [this, frames](size_t f) {
+            Canvas canvas(width, height);
+            color c{};
+            if (f < frames / 3) {
+                c = color::RED;
+            } else if (f < frames / 3 * 2) {
+                c = color::PINK;
+            } else {
+                c = color::VIOLET;
+            }
+
+            ITER_WHOLE_PLANE(width, height) {
+                if (heart_curve(curr_x + 0.5, curr_y) * heart_curve(curr_x + 0.5, curr_y + 1) < 0.0
+                    || heart_curve(curr_x, curr_y + 0.5) * heart_curve(curr_x + 1, curr_y + 0.5) < 0.0)
+                // it is not an accurate check, but good enough in this case
+                {
+                    canvas.print_region(curr_x, curr_y, c, 3);
+                }
+            }
+
+            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+        };
+
+        std::mutex mutex;
+        bool is_loading = true;
+        auto loading = [&](void) {
+            bool status;
+            int cnt = 0;
+            while (true) {
+                {
+                    std::lock_guard lock_guard(mutex);
+
+                    status = is_loading;
+                }
+
+                if (!status) {
+                    fmt::print("\rLoading COLOR_CHANGE of [{0}] frames: finished\n", frames);
+                    break;
+                }
+
+                cnt = (cnt + 1) % 4;
+                switch (cnt) {
+                    case 0:
+                        fmt::print("\rLoading COLOR_CHANGE of [{0}] frames: -", frames);
+                        fflush(stdout);
+                        break;
+                    case 1:
+                        fmt::print("\rLoading COLOR_CHANGE of [{0}] frames: \\", frames);
+                        fflush(stdout);
+                        break;
+                    case 2:
+                        fmt::print("\rLoading COLOR_CHANGE of [{0}] frames: |", frames);
+                        fflush(stdout);
+                        break;
+                    case 3:
+                        fmt::print("\rLoading COLOR_CHANGE of [{0}] frames: /", frames);
+                        fflush(stdout);
+                        break;
+                    default:
+                        break;
+                }
+
+                std::this_thread::sleep_for(0.2s);
+            }
+        };
+
+        // loading start
+        std::thread t_loading(loading);
+
+        std::vector<std::future<void>> results;
+        for (size_t f = 0; f < frames; ++f) {
+            results.emplace_back(stp.enqueue(task, f));
+        }
+        std::for_each(results.begin(), results.end(), [](std::future<void>& f) { f.get(); });
+
+        // finished
+        {
+            std::lock_guard lock_guard(mutex);
+
+            is_loading = false;
+        }
+        t_loading.join();
+
+        // update the global frame count
+        frame_cnt += frames;
+    }
 }

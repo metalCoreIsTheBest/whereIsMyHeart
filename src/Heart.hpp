@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "utils.hpp"
+#include "SimpleThreadPool.hpp"
 
 #define DC_HEART_AB(NAME) \
     void anime_block_##NAME (size_t frames)
@@ -18,6 +19,15 @@
 
 #define CALL_HEART_AB(NAME, FRAMES) \
     anime_block_##NAME(FRAMES)
+
+#define DC_HEART_AB_PARA(NAME) \
+    void anime_block_##NAME##_parallel (size_t frames, SimpleThreadPool& stp)
+
+#define DF_HEART_AB_PARA(NAME) \
+    void Heart::anime_block_##NAME##_parallel (size_t frames, SimpleThreadPool& stp)
+
+#define CALL_HEART_AB_PARA(NAME, FRAMES, STP) \
+    anime_block_##NAME##_parallel (FRAMES, STP)
 
 namespace heart {
     class Heart {
@@ -52,6 +62,7 @@ namespace heart {
 
             // unified interface for different animations
             void anime_block(animation ani, size_t frames);
+            void anime_block_para(animation ani, size_t frames, SimpleThreadPool& stp);
 
             // turn all the frames into a video
             void toVideo(int frame_rate);
@@ -139,6 +150,17 @@ namespace heart {
             DC_HEART_AB(EMPTY);
             DC_HEART_AB(COLOR_CHANGE);
 
+            // multithread versions
+            DC_HEART_AB_PARA(SHOW_UP2DOWN);
+            DC_HEART_AB_PARA(SHOW_DOWN2UP);
+            DC_HEART_AB_PARA(DIS_UP2DOWN);
+            DC_HEART_AB_PARA(DIS_DOWN2UP);
+            DC_HEART_AB_PARA(STILL);
+            DC_HEART_AB_PARA(BEAT);
+            DC_HEART_AB_PARA(SLIDE);
+            DC_HEART_AB_PARA(EMPTY);
+            DC_HEART_AB_PARA(COLOR_CHANGE);
+
             // inline drawing utility function
 
             // F(x, y) = (k(x - a)^2 + k(y - b)^2 - 1)^3 - (k(x - a))^2 * (k(y - b)^3
@@ -146,7 +168,7 @@ namespace heart {
             // domain (approximate):
             // -1.15/|k| + a < x < 1.15/|k| + a
             //  -1/|k| + b < y < 1.25/|k| + b
-            double heart_curve(double x, double y) {
+            double heart_curve(double x, double y) const {
                 return std::pow(std::pow(k * (x - a), 2) + std::pow(k * (y - b), 2) - 1, 3)
                        - std::pow(k * (x - a), 2) * std::pow(k * (y - b), 3);
             }
