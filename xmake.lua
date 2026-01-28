@@ -1,5 +1,7 @@
 add_rules("mode.debug", "mode.release")
 
+add_requires("fmt")
+
 target("whereIsMyHeart")
     set_languages("c++17")
     set_warnings("all", "error")
