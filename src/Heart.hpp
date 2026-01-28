@@ -65,7 +65,7 @@ namespace heart {
             void anime_block_para(animation ani, size_t frames, SimpleThreadPool& stp);
 
             // turn all the frames into a video
-            void toVideo(int frame_rate);
+            void toVideo(int frame_rate) const;
 
         private:
             static const int COLOR_MAX_VAL = 255;
@@ -87,10 +87,13 @@ namespace heart {
                     void print_region(size_t x, size_t y, color c, size_t size);
 
                     // load the image to a ppm file
-                    void toPPM(const std::string& output_file);
+                    void toPPM(const std::string& output_file) const;
+
+                    // load the image to a png file
+                    void toPNG(const std::string& output_file) const;
 
                     // getter
-                    color get(size_t x, size_t y) {
+                    color get(size_t x, size_t y) const {
                         return canv.at(heart::map_xy(x, y, width));
                     }
             };

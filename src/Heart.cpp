@@ -10,6 +10,10 @@
 #include <algorithm>
 #include <string>
 #include <thread>
+#include <vector>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "../external/stb_image_write.h"
 
 #include "Heart.hpp"
 #include "utils.hpp"
@@ -40,7 +44,7 @@ namespace heart {
         }
     }
 
-    void Heart::Canvas::toPPM(const std::string& output_file) {
+    void Heart::Canvas::toPPM(const std::string& output_file) const {
         /*
         auto fout = fmt::output_file(output_file);
         fout.print("P3\n{} {}\n{}\n", width, height, COLOR_MAX_VAL);
@@ -58,6 +62,25 @@ namespace heart {
         }
 
         fout.close();
+    }
+
+    void Heart::Canvas::toPNG(const std::string& output_file) const {
+        static const int comp = 3;
+        std::vector<unsigned char> pixels(width * height * comp);
+        for (size_t y = 0; y < height; ++y) {
+            for (size_t x = 0; x < width; ++x) {
+                size_t i = (y * width + x) * comp;
+                auto pixel = canv[y * width + x];
+                pixels[i + 0] = Heart::c2v(pixel)[0];
+                pixels[i + 1] = Heart::c2v(pixel)[1];
+                pixels[i + 2] = Heart::c2v(pixel)[1];
+            }
+        }
+
+        if (!stbi_write_png(output_file.c_str(), width, height, comp, pixels.data(), width * comp)) {
+            fmt::print(stderr, "Failed to create {}\n", output_file);
+            exit(EXIT_FAILURE);
+        }
     }
 
     Heart::Heart(const std::string& outout_dir) {
@@ -123,6 +146,7 @@ namespace heart {
 
             default:
                 fmt::print(stderr, "Unexpected input for Heart::anime_block(): {}", ani);
+                exit(EXIT_FAILURE);
         }
     }
 
@@ -165,6 +189,7 @@ namespace heart {
 
             default:
                 fmt::print(stderr, "Unexpected input for Heart::anime_block(): {}", ani);
+                exit(EXIT_FAILURE);
         }
     }
 
@@ -183,7 +208,7 @@ namespace heart {
                     canvas.print_region(curr_x, curr_y, color::RED, 3);
                 }
             }
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt) + ".png");
             if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating SHOW_UP2DOWN: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
@@ -209,7 +234,7 @@ namespace heart {
                     }
                 }
             }
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt) + ".png");
             if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating SHOW_DOWN2UP: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
@@ -240,7 +265,7 @@ namespace heart {
                     }
                 }
             }
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt) + ".png");
             if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating DIS_UP2DOWN: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
@@ -273,7 +298,7 @@ namespace heart {
                     }
                 }
             }
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt) + ".png");
             if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating DIS_DOWN2UP: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
@@ -299,7 +324,7 @@ namespace heart {
                     }
                 }
             }
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt) + ".png");
             if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating STILL: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
@@ -335,7 +360,7 @@ namespace heart {
                 }
             }
 
-            canvas.toPPM(fmt::format("{0}/frame{1}.ppm", output_dir, std::to_string(frame_cnt)));
+            canvas.toPNG(fmt::format("{0}/frame{1}.png", output_dir, std::to_string(frame_cnt)));
             if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating BEAT: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
@@ -372,7 +397,7 @@ namespace heart {
                 }
             }
 
-            canvas.toPPM(fmt::format("{0}/frame{1}.ppm", output_dir, std::to_string(frame_cnt)));
+            canvas.toPNG(fmt::format("{0}/frame{1}.png", output_dir, std::to_string(frame_cnt)));
             if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating SLIDE: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
@@ -389,7 +414,7 @@ namespace heart {
         fmt::print("Generating EMPTY:");
         std::fflush(stdout);
         for (size_t f = 1; f <= frames; f++) {
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt) + ".png");
             if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating EMPTY: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
@@ -425,7 +450,7 @@ namespace heart {
                 }
             }
 
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt) + ".png");
             if (f % 10 == 0 || f == frames) {
                 fmt::print("\rGenerating COLOR_CHANGE: {:.2f}%", static_cast<double>(f) / static_cast<double>(frames) * 100.0);
                 std::fflush(stdout);
@@ -435,8 +460,8 @@ namespace heart {
         fmt::print("\n");
     }
 
-    void Heart::toVideo(int frame_rate) {
-        std::string inputPattern = output_dir + "/frame%d.ppm";
+    void Heart::toVideo(int frame_rate) const {
+        std::string inputPattern = output_dir + "/frame%d.png";
         std::string outputFile = output_dir + "/output.mp4";
         std::string codec = "libx264";
         std::string pixelFormat = "yuv420p";
@@ -450,6 +475,7 @@ namespace heart {
 
         if (result != 0) {
            fmt::print(stderr, "Failed to generate the video!");
+           exit(EXIT_FAILURE);
         }
     };
 
@@ -466,7 +492,7 @@ namespace heart {
                     canvas.print_region(curr_x, curr_y, color::RED, 3);
                 }
             }
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".png");
         };
 
         std::mutex mutex;
@@ -547,7 +573,7 @@ namespace heart {
                     }
                 }
             }
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".png");
         };
 
         std::mutex mutex;
@@ -629,7 +655,7 @@ namespace heart {
                     }
                 }
             }
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".png");
         };
 
         std::mutex mutex;
@@ -710,7 +736,7 @@ namespace heart {
                     }
                 }
             }
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".png");
         };
 
         std::mutex mutex;
@@ -806,7 +832,7 @@ namespace heart {
                 }
             }
 
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".png");
         };
 
         std::mutex mutex;
@@ -892,7 +918,7 @@ namespace heart {
                 }
             }
 
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".png");
         };
 
         std::mutex mutex;
@@ -985,7 +1011,7 @@ namespace heart {
                 }
             }
 
-            canvas.toPPM(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".ppm");
+            canvas.toPNG(output_dir + "/frame" + std::to_string(frame_cnt + f) + ".png");
         };
 
         std::mutex mutex;
